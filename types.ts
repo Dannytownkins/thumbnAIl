@@ -46,38 +46,50 @@ export interface BrandProfile {
   referenceImageUrl?: string;
 }
 
-// Generic Asset Layer (Used for Product AND Elements)
-export interface AssetLayer {
+export interface BaseLayer {
   id: string;
-  type: 'product' | 'element';
-  url: string;
-  x: number; // Center X in 1920 coords
-  y: number; // Center Y in 1080 coords
-  scale: number;
+  type: 'image' | 'text';
+  x: number;
+  y: number;
   rotation: number;
+  visible: boolean;
+  locked: boolean;
+}
+
+export interface ImageLayer extends BaseLayer {
+  type: 'image';
+  url: string;
+  scale: number;
   glow: boolean;
   glowColor: string;
   shadow: boolean;
-  strokeWidth: number; // For outlines (0 = none)
+  strokeWidth: number;
   strokeColor: string;
-  sourceImage?: string; // The raw uploaded image before isolation
+  sourceImage?: string; 
+  isProduct?: boolean; // To distinguish main product from decorative elements
 }
 
-export interface TextLayer {
-  id: string;
+export interface TextLayer extends BaseLayer {
+  type: 'text';
   text: string;
   font: BrandFont;
   color: string;
+  fontSize: number;
+  letterSpacing: number;
+  skewX: number;
+  
+  // Stroke
   strokeColor: string;
   strokeWidth: number;
-  fontSize: number;
-  letterSpacing: number; // Kerning
-  skewX: number; // Skewing
-  x: number; // Center X in 1920 coords
-  y: number; // Center Y in 1080 coords
-  rotation: number;
+  
+  // Shadow
   shadowColor: string;
+  shadowBlur: number;
+  shadowOffsetX: number;
+  shadowOffsetY: number;
 }
+
+export type Layer = ImageLayer | TextLayer;
 
 export interface GradientState {
   color1: string;
@@ -89,7 +101,5 @@ export interface CanvasState {
   backgroundType: 'image' | 'gradient';
   backgroundUrl: string | null;
   backgroundGradient: GradientState;
-  product: AssetLayer | null;
-  elements: AssetLayer[]; // Array for extra stickers, icons, logos, etc.
-  textLayers: TextLayer[];
+  layers: Layer[]; // Unified layer stack (Index 0 = Background/Bottom, Last Index = Foreground/Top)
 }
