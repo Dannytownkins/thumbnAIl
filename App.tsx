@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Image as ImageIcon, Youtube, Sparkles, Download, Eye, Key, Upload, Fingerprint, Layers, Type as TypeIcon, Trash2, Save, Box, AlignLeft, AlignCenter, AlignRight, MoveVertical, X, Copy, Sticker, Zap, Scissors, Check } from 'lucide-react';
+import { Image as ImageIcon, Youtube, Sparkles, Download, Eye, Key, Upload, Fingerprint, Layers, Type as TypeIcon, Trash2, Box, AlignLeft, AlignCenter, AlignRight, MoveVertical, X, Copy, Sticker, Zap, Scissors, Check, PaintBucket, ArrowRight, ArrowDown, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { Input, TextArea } from './components/Input';
 import { Button } from './components/Button';
 import { ConceptCard } from './components/ConceptCard';
@@ -32,10 +32,12 @@ export default function App() {
     isAnalyzing: boolean;
     previewUrl: string | null;
     detectedPrompt: string;
+    profileName: string;
   }>({
     isAnalyzing: false,
     previewUrl: null,
-    detectedPrompt: ''
+    detectedPrompt: '',
+    profileName: ''
   });
   
   // Background Library
@@ -73,7 +75,13 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'generate' | 'layers' | 'backgrounds' | 'elements'>('generate');
   
   const [canvasState, setCanvasState] = useState<CanvasState>({
+     backgroundType: 'image',
      backgroundUrl: null,
+     backgroundGradient: {
+        color1: '#1a1a1a',
+        color2: '#000000',
+        direction: 'to bottom'
+     },
      product: null,
      elements: [],
      textLayers: [
@@ -213,7 +221,8 @@ export default function App() {
       setAnalyzingState({
         isAnalyzing: true,
         previewUrl: base64String,
-        detectedPrompt: 'Extracting visual style, please wait...'
+        detectedPrompt: 'Extracting visual style, please wait...',
+        profileName: ''
       });
 
       const base64Data = base64String.split(',')[1];
@@ -242,18 +251,18 @@ export default function App() {
     
     const newProfile: BrandProfile = {
       id: crypto.randomUUID(),
-      name: `Brand Style ${savedProfiles.length + 1}`,
+      name: analyzingState.profileName.trim() || `Brand Style ${savedProfiles.length + 1}`,
       styleDescription: analyzingState.detectedPrompt,
       referenceImageUrl: analyzingState.previewUrl
     };
     
     setSavedProfiles(prev => [...prev, newProfile]);
     setActiveProfileId(newProfile.id);
-    setAnalyzingState({ isAnalyzing: false, previewUrl: null, detectedPrompt: '' });
+    setAnalyzingState({ isAnalyzing: false, previewUrl: null, detectedPrompt: '', profileName: '' });
   };
 
   const cancelBrandAnalysis = () => {
-    setAnalyzingState({ isAnalyzing: false, previewUrl: null, detectedPrompt: '' });
+    setAnalyzingState({ isAnalyzing: false, previewUrl: null, detectedPrompt: '', profileName: '' });
   };
 
   // --- GENERATION HANDLERS ---
@@ -303,6 +312,7 @@ export default function App() {
 
       setCanvasState(prev => ({
          ...prev,
+         backgroundType: 'image',
          backgroundUrl: imageUrl,
          textLayers: prev.textLayers.length > 0 
            ? prev.textLayers.map((l, i) => i === 0 ? { ...l, text: concept.hookText || l.text } : l)
@@ -496,7 +506,7 @@ export default function App() {
      reader.onloadend = () => {
         const url = reader.result as string;
         setBackgroundLibrary(prev => [url, ...prev]);
-        setCanvasState(prev => ({ ...prev, backgroundUrl: url }));
+        setCanvasState(prev => ({ ...prev, backgroundType: 'image', backgroundUrl: url }));
      };
      reader.readAsDataURL(file);
   };
@@ -589,7 +599,25 @@ export default function App() {
 
     const drawComposite = async () => {
        // 1. Background (Z-0)
-       if (canvasState.backgroundUrl) {
+       if (canvasState.backgroundType === 'gradient') {
+          const { color1, color2, direction } = canvasState.backgroundGradient;
+          let grad;
+          const w = canvas.width;
+          const h = canvas.height;
+
+          // Map CSS direction strings to Canvas Gradient Coords
+          if (direction === 'to right') grad = ctx.createLinearGradient(0, 0, w, 0);
+          else if (direction === 'to bottom') grad = ctx.createLinearGradient(0, 0, 0, h);
+          else if (direction === 'to bottom right') grad = ctx.createLinearGradient(0, 0, w, h);
+          else if (direction === 'to top right') grad = ctx.createLinearGradient(0, h, w, 0);
+          else grad = ctx.createLinearGradient(0, 0, 0, h);
+
+          grad.addColorStop(0, color1);
+          grad.addColorStop(1, color2);
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, w, h);
+       }
+       else if (canvasState.backgroundType === 'image' && canvasState.backgroundUrl) {
           try {
             const bg = await loadImage(canvasState.backgroundUrl);
             // Cover mode
@@ -690,7 +718,7 @@ export default function App() {
        }
 
        const link = document.createElement('a');
-       link.download = `slingmods-thumbnail-${Date.now()}.png`;
+       link.download = `thumbnAIl-export-${Date.now()}.png`;
        link.href = canvas.toDataURL('image/png');
        link.click();
     };
@@ -803,7 +831,7 @@ export default function App() {
                <h3 className="text-xs font-bold text-brand-400 uppercase flex items-center"><Box className="w-3 h-3 mr-2"/>Main Product (Z:10)</h3>
            ) : (
                <div className="flex justify-between items-center">
-                  <h3 className="text-xs font-bold text-blue-400 uppercase flex items-center"><Sticker className="w-3 h-3 mr-2"/>Element Layer (Z:20)</h3>
+                  <h3 className="text-xs font-bold text-brand-400 uppercase flex items-center"><Sticker className="w-3 h-3 mr-2"/>Element Layer (Z:20)</h3>
                   <button onClick={() => deleteElement(asset.id)} className="text-gray-500 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
                </div>
            )}
@@ -891,9 +919,9 @@ export default function App() {
     return (
       <div className="bg-dark-900 border border-dark-800 rounded-2xl p-5 space-y-4 relative animate-in fade-in slide-in-from-right-4 duration-200">
         <div className="flex justify-between items-center">
-          <h3 className="text-xs font-bold text-green-400 uppercase flex items-center"><TypeIcon className="w-3 h-3 mr-2"/>Text Layer (Z:30)</h3>
+          <h3 className="text-xs font-bold text-brand-400 uppercase flex items-center"><TypeIcon className="w-3 h-3 mr-2"/>Text Layer (Z:30)</h3>
           <div>
-            <button onClick={() => duplicateTextLayer(text)} className="text-gray-500 hover:text-green-400 mr-2"><Copy className="w-4 h-4" /></button>
+            <button onClick={() => duplicateTextLayer(text)} className="text-gray-500 hover:text-brand-400 mr-2"><Copy className="w-4 h-4" /></button>
             <button onClick={() => deleteTextLayer(text.id)} className="text-gray-500 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
           </div>
         </div>
@@ -1044,12 +1072,20 @@ export default function App() {
                              )}
                         </div>
                     )}
+                    
+                    <Input 
+                        label="Style Name"
+                        placeholder="e.g. Tech Minimalist"
+                        value={analyzingState.profileName}
+                        onChange={(e) => setAnalyzingState(prev => ({...prev, profileName: e.target.value}))}
+                        className="bg-dark-900/50 border-brand-500/30 focus:border-brand-500"
+                    />
 
                     <TextArea 
                         label="Detected Style Prompt"
                         value={analyzingState.detectedPrompt}
                         onChange={(e) => setAnalyzingState(prev => ({...prev, detectedPrompt: e.target.value}))}
-                        className="text-xs font-mono h-24"
+                        className="text-xs font-mono h-24 bg-dark-900/50"
                         placeholder="AI is analyzing..."
                     />
                     
@@ -1167,11 +1203,19 @@ export default function App() {
                id="canvas-root"
             >
                 {/* LAYER 0: Background (z-0) */}
-                <div className="absolute inset-0 z-0 pointer-events-none select-none">
-                    {canvasState.backgroundUrl ? 
-                      <img src={canvasState.backgroundUrl} className="w-full h-full object-cover" />
-                      : <div className="w-full h-full bg-gradient-to-br from-dark-800 to-dark-900 flex items-center justify-center text-dark-700 font-mono text-4xl">EMPTY CANVAS</div>
-                    }
+                <div 
+                  className="absolute inset-0 z-0 pointer-events-none select-none"
+                  style={{
+                      background: canvasState.backgroundType === 'gradient'
+                        ? `linear-gradient(${canvasState.backgroundGradient.direction}, ${canvasState.backgroundGradient.color1}, ${canvasState.backgroundGradient.color2})`
+                        : 'none'
+                  }}
+                >
+                    {canvasState.backgroundType === 'image' && (
+                        canvasState.backgroundUrl ? 
+                        <img src={canvasState.backgroundUrl} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full bg-gradient-to-br from-dark-800 to-dark-900 flex items-center justify-center text-dark-700 font-mono text-4xl">EMPTY CANVAS</div>
+                    )}
                 </div>
 
                 {/* LAYER 1: Product (z-10) */}
@@ -1186,7 +1230,7 @@ export default function App() {
                     >
                       <img 
                           src={canvasState.product.url} 
-                          className={`block max-w-none pointer-events-auto cursor-grab active:cursor-grabbing ${selection?.id === canvasState.product.id ? 'outline outline-4 outline-brand-500' : ''}`}
+                          className={`block max-w-none pointer-events-auto cursor-grab active:cursor-grabbing ${selection?.id === canvasState.product.id ? 'ring-4 ring-brand-500' : ''}`}
                           style={{ 
                             transform: 'translate(-50%, -50%)', 
                             filter: canvasState.product.shadow ? `drop-shadow(10px 10px 20px rgba(0,0,0,0.8))` : 'none'
@@ -1227,7 +1271,7 @@ export default function App() {
                       <div className="relative" style={{ transform: 'translate(-50%, -50%)' }}>
                           <img 
                               src={el.url} 
-                              className={`block max-w-none pointer-events-auto cursor-grab active:cursor-grabbing ${selection?.id === el.id ? 'outline outline-4 outline-blue-500' : ''}`}
+                              className={`block max-w-none pointer-events-auto cursor-grab active:cursor-grabbing ${selection?.id === el.id ? 'ring-4 ring-brand-500' : ''}`}
                               style={{ 
                                   filter: el.shadow ? `drop-shadow(10px 10px 20px rgba(0,0,0,0.8))` : 'none',
                                   minWidth: '50px', minHeight: '50px' // Ensure visibility
@@ -1263,7 +1307,7 @@ export default function App() {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <span
-                            className={`${text.font} text-center uppercase whitespace-nowrap origin-center leading-none select-none ${selection?.id === text.id ? 'outline outline-4 outline-green-500' : ''}`}
+                            className={`${text.font} text-center uppercase whitespace-nowrap origin-center leading-none select-none ${selection?.id === text.id ? 'ring-4 ring-brand-500' : ''}`}
                             style={{
                               color: text.color,
                               fontSize: `${text.fontSize}px`,
@@ -1313,18 +1357,97 @@ export default function App() {
               )}
               
               {activeTab === 'backgrounds' && (
-                <div className="space-y-3">
-                  <Button variant="secondary" className="w-full" onClick={() => backgroundInputRef.current?.click()} icon={<Upload className="w-4 h-4"/>}>Upload Background</Button>
-                  <input type="file" ref={backgroundInputRef} onChange={handleBackgroundUpload} className="hidden" accept="image/*" />
-                  <div className="grid grid-cols-2 gap-2">
-                      {backgroundLibrary.map(bg => (
-                        <div key={bg} className="relative aspect-video rounded-md overflow-hidden cursor-pointer group border border-dark-700 hover:border-brand-500" onClick={() => setCanvasState(prev => ({...prev, backgroundUrl: bg}))}>
-                            <img src={bg} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <Eye className="w-6 h-6 text-white"/>
+                <div className="space-y-6">
+                  {/* Gradient Generator */}
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] uppercase font-bold text-gray-500 tracking-wider flex items-center">
+                        <PaintBucket className="w-3 h-3 mr-2" /> Gradient Generator
+                    </h3>
+                    <div className="bg-dark-800 p-4 rounded-xl border border-dark-700 space-y-4">
+                        <div className="flex gap-3">
+                            <div className="flex-1 space-y-1">
+                                <label className="text-xs text-gray-400">Color 1</label>
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="color" 
+                                        value={canvasState.backgroundGradient.color1}
+                                        onChange={(e) => setCanvasState(prev => ({
+                                            ...prev, 
+                                            backgroundType: 'gradient',
+                                            backgroundGradient: { ...prev.backgroundGradient, color1: e.target.value }
+                                        }))}
+                                        className="w-8 h-8 p-0 bg-transparent border-none rounded cursor-pointer"
+                                    />
+                                    <span className="text-xs font-mono text-gray-500">{canvasState.backgroundGradient.color1}</span>
+                                </div>
+                            </div>
+                            <div className="flex-1 space-y-1">
+                                <label className="text-xs text-gray-400">Color 2</label>
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="color" 
+                                        value={canvasState.backgroundGradient.color2}
+                                        onChange={(e) => setCanvasState(prev => ({
+                                            ...prev, 
+                                            backgroundType: 'gradient',
+                                            backgroundGradient: { ...prev.backgroundGradient, color2: e.target.value }
+                                        }))}
+                                        className="w-8 h-8 p-0 bg-transparent border-none rounded cursor-pointer"
+                                    />
+                                    <span className="text-xs font-mono text-gray-500">{canvasState.backgroundGradient.color2}</span>
+                                </div>
                             </div>
                         </div>
-                      ))}
+                        
+                        <div className="space-y-1">
+                            <label className="text-xs text-gray-400">Direction</label>
+                            <div className="grid grid-cols-4 gap-2">
+                                <button
+                                    onClick={() => setCanvasState(prev => ({ ...prev, backgroundType: 'gradient', backgroundGradient: { ...prev.backgroundGradient, direction: 'to right' } }))}
+                                    className={`p-2 rounded-md border flex items-center justify-center transition-all ${canvasState.backgroundGradient.direction === 'to right' && canvasState.backgroundType === 'gradient' ? 'bg-brand-600 border-brand-500 text-white' : 'bg-dark-900 border-dark-600 text-gray-400 hover:border-gray-500'}`}
+                                >
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => setCanvasState(prev => ({ ...prev, backgroundType: 'gradient', backgroundGradient: { ...prev.backgroundGradient, direction: 'to bottom' } }))}
+                                    className={`p-2 rounded-md border flex items-center justify-center transition-all ${canvasState.backgroundGradient.direction === 'to bottom' && canvasState.backgroundType === 'gradient' ? 'bg-brand-600 border-brand-500 text-white' : 'bg-dark-900 border-dark-600 text-gray-400 hover:border-gray-500'}`}
+                                >
+                                    <ArrowDown className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => setCanvasState(prev => ({ ...prev, backgroundType: 'gradient', backgroundGradient: { ...prev.backgroundGradient, direction: 'to bottom right' } }))}
+                                    className={`p-2 rounded-md border flex items-center justify-center transition-all ${canvasState.backgroundGradient.direction === 'to bottom right' && canvasState.backgroundType === 'gradient' ? 'bg-brand-600 border-brand-500 text-white' : 'bg-dark-900 border-dark-600 text-gray-400 hover:border-gray-500'}`}
+                                >
+                                    <ArrowDownRight className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => setCanvasState(prev => ({ ...prev, backgroundType: 'gradient', backgroundGradient: { ...prev.backgroundGradient, direction: 'to top right' } }))}
+                                    className={`p-2 rounded-md border flex items-center justify-center transition-all ${canvasState.backgroundGradient.direction === 'to top right' && canvasState.backgroundType === 'gradient' ? 'bg-brand-600 border-brand-500 text-white' : 'bg-dark-900 border-dark-600 text-gray-400 hover:border-gray-500'}`}
+                                >
+                                    <ArrowUpRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                  </div>
+
+                  {/* Image Backgrounds */}
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] uppercase font-bold text-gray-500 tracking-wider flex items-center">
+                        <ImageIcon className="w-3 h-3 mr-2" /> Image Backgrounds
+                    </h3>
+                    <Button variant="secondary" className="w-full" onClick={() => backgroundInputRef.current?.click()} icon={<Upload className="w-4 h-4"/>}>Upload Image</Button>
+                    <input type="file" ref={backgroundInputRef} onChange={handleBackgroundUpload} className="hidden" accept="image/*" />
+                    <div className="grid grid-cols-2 gap-2">
+                        {backgroundLibrary.map(bg => (
+                            <div key={bg} className="relative aspect-video rounded-md overflow-hidden cursor-pointer group border border-dark-700 hover:border-brand-500" onClick={() => setCanvasState(prev => ({...prev, backgroundType: 'image', backgroundUrl: bg}))}>
+                                <img src={bg} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <Eye className="w-6 h-6 text-white"/>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                   </div>
                 </div>
               )}

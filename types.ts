@@ -79,8 +79,16 @@ export interface TextLayer {
   shadowColor: string;
 }
 
+export interface GradientState {
+  color1: string;
+  color2: string;
+  direction: 'to right' | 'to bottom' | 'to bottom right' | 'to top right';
+}
+
 export interface CanvasState {
+  backgroundType: 'image' | 'gradient';
   backgroundUrl: string | null;
+  backgroundGradient: GradientState;
   product: AssetLayer | null;
   elements: AssetLayer[]; // Array for extra stickers, icons, logos, etc.
   textLayers: TextLayer[];

@@ -35,45 +35,43 @@ export const SAMPLE_BACKGROUNDS = [
 // Pre-defined assets (Using high quality CDN icons)
 export const COMMON_ASSETS = [
   {
-    category: "Essentials",
+    category: "YouTube Essentials",
     items: [
-      "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg", // YouTube Logo
-      "https://cdn-icons-png.flaticon.com/512/1384/1384060.png", // YouTube Play Button Red
-      "https://cdn-icons-png.flaticon.com/512/3670/3670151.png", // Subscribe Button
+      "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg", // Logo
+      "https://cdn-icons-png.flaticon.com/512/1384/1384060.png", // Play Button
+      "https://cdn-icons-png.flaticon.com/512/3670/3670151.png", // Subscribe
+      "https://cdn-icons-png.flaticon.com/512/15713/15713230.png", // Bell
       "https://cdn-icons-png.flaticon.com/512/7595/7595571.png", // Live Badge
-      "https://cdn-icons-png.flaticon.com/512/190/190411.png", // Verification Checkmark
     ]
   },
   {
-    category: "Arrows & Pointers",
+    category: "Shapes & Arrows",
     items: [
-      "https://cdn-icons-png.flaticon.com/512/122/122641.png", // Red Arrow Right
-      "https://cdn-icons-png.flaticon.com/512/545/545682.png", // Curved Red Arrow
-      "https://cdn-icons-png.flaticon.com/512/109/109617.png", // Sharp Red Pointer
-      "https://cdn-icons-png.flaticon.com/512/2223/2223615.png", // Hand Drawn Arrow
-      "https://cdn-icons-png.flaticon.com/512/3114/3114883.png", // Yellow Cursor
+      "https://cdn-icons-png.flaticon.com/512/122/122641.png", // Basic Red Arrow
+      "https://cdn-icons-png.flaticon.com/512/545/545682.png", // Curved Arrow
+      "https://cdn-icons-png.flaticon.com/512/109/109617.png", // Sharp Pointer
+      "https://cdn-icons-png.flaticon.com/512/5246/5246649.png", // Red Circle Scribble
+      "https://cdn-icons-png.flaticon.com/512/10089/10089700.png", // Red X Mark
     ]
   },
   {
-    category: "Emotions & Reactions",
+    category: "Viral Reactions",
     items: [
-      "https://cdn-icons-png.flaticon.com/512/742/742751.png", // Shocked Emoji
-      "https://cdn-icons-png.flaticon.com/512/742/742752.png", // Thinking Emoji
-      "https://cdn-icons-png.flaticon.com/512/742/742920.png", // Money/Greedy Emoji
-      "https://cdn-icons-png.flaticon.com/512/12230/12230336.png", // Explosion/Bang
+      "https://cdn-icons-png.flaticon.com/512/742/742751.png", // Shocked
+      "https://cdn-icons-png.flaticon.com/512/742/742752.png", // Thinking
+      "https://cdn-icons-png.flaticon.com/512/742/742920.png", // Money Eyes
       "https://cdn-icons-png.flaticon.com/512/496/496366.png", // Fire
-      "https://cdn-icons-png.flaticon.com/512/179/179386.png", // Skull (Danger)
+      "https://cdn-icons-png.flaticon.com/512/16699/16699493.png", // 100 Percent
+      "https://cdn-icons-png.flaticon.com/512/179/179386.png", // Danger Skull
     ]
   },
   {
-    category: "Badges & Icons",
+    category: "Trust Badges",
     items: [
-      "https://cdn-icons-png.flaticon.com/512/1633/1633656.png", // VS (Versus)
-      "https://cdn-icons-png.flaticon.com/512/14090/14090477.png", // 100 Score
-      "https://cdn-icons-png.flaticon.com/512/5229/5229380.png", // Money Bag
+      "https://cdn-icons-png.flaticon.com/512/190/190411.png", // Verified
       "https://cdn-icons-png.flaticon.com/512/1828/1828884.png", // Star
-      "https://cdn-icons-png.flaticon.com/512/1828/1828843.png", // Green Check
-      "https://cdn-icons-png.flaticon.com/512/1828/1828840.png", // Red Cross
+      "https://cdn-icons-png.flaticon.com/512/14090/14090477.png", // A+ Score
+      "https://cdn-icons-png.flaticon.com/512/5229/5229380.png", // Money Bag
     ]
   }
 ];
