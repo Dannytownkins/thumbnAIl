@@ -25,7 +25,8 @@ const GRADIENT_PRESETS = [
 ];
 
 export default function App() {
-  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
+  // Initialize with process.env check for production deployment (Vercel) support
+  const [hasApiKey, setHasApiKey] = useState<boolean>(!!process.env.API_KEY);
   const [topic, setTopic] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<ThumbnailStyle>(ThumbnailStyle.CLICKBAIT_SHOCKED);
   
@@ -187,6 +188,13 @@ export default function App() {
 
   useEffect(() => {
     const checkKey = async () => {
+      // If we have an env var (e.g. production build), trust it.
+      if (process.env.API_KEY) {
+        setHasApiKey(true);
+        return;
+      }
+      
+      // Fallback: Check for AI Studio prototype environment
       const aiStudio = (window as any).aistudio;
       if (aiStudio && aiStudio.hasSelectedApiKey) {
         const hasKey = await aiStudio.hasSelectedApiKey();
