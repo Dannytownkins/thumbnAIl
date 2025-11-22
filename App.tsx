@@ -13,6 +13,17 @@ import { Concept, ThumbnailStyle, GeneratedImage, BrandProfile, CanvasState, Bra
 const CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 1080;
 
+const GRADIENT_PRESETS = [
+  { name: 'Midnight', c1: '#0f172a', c2: '#312e81' },
+  { name: 'Hot YouTube', c1: '#ef4444', c2: '#7f1d1d' },
+  { name: 'Oceanic', c1: '#0ea5e9', c2: '#1e3a8a' },
+  { name: 'Neon Violet', c1: '#a855f7', c2: '#4c1d95' },
+  { name: 'Emerald', c1: '#10b981', c2: '#064e3b' },
+  { name: 'Sunset', c1: '#f97316', c2: '#be123c' },
+  { name: 'Charcoal', c1: '#27272a', c2: '#09090b' },
+  { name: 'Gold', c1: '#eab308', c2: '#854d0e' },
+];
+
 export default function App() {
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
   const [topic, setTopic] = useState('');
@@ -100,7 +111,9 @@ export default function App() {
         x: CANVAS_WIDTH / 2,
         y: CANVAS_HEIGHT / 2,
         rotation: 0,
+        shadow: true,
         shadowColor: '#000000',
+        shadowOpacity: 1,
         shadowBlur: 0,
         shadowOffsetX: 4,
         shadowOffsetY: 4,
@@ -113,12 +126,13 @@ export default function App() {
   // Scaling State for Preview
   const viewportRef = useRef<HTMLDivElement>(null);
   const [scaleFactor, setScaleFactor] = useState(0.5);
+  const scaleFactorRef = useRef(0.5); // Ref for access in event handlers
 
   const updateScale = useCallback(() => {
     if (viewportRef.current) {
       const { clientWidth, clientHeight } = viewportRef.current;
       // We want to fit 1920x1080 into the available space with some padding
-      const padding = 20;
+      const padding = 40;
       const availableWidth = clientWidth - padding;
       const availableHeight = clientHeight - padding;
 
@@ -126,27 +140,48 @@ export default function App() {
       const scaleY = availableHeight / CANVAS_HEIGHT;
       
       // Use the smaller scale to ensure it fits entirely
-      setScaleFactor(Math.min(scaleX, scaleY));
+      const newScale = Math.min(scaleX, scaleY);
+      setScaleFactor(newScale);
+      scaleFactorRef.current = newScale;
     }
   }, []);
 
+  // Use ResizeObserver for robust responsiveness
   useEffect(() => {
-    window.addEventListener('resize', updateScale);
-    updateScale();
-    const t = setTimeout(updateScale, 100); // Debounce initial render
-    return () => {
-        window.removeEventListener('resize', updateScale);
-        clearTimeout(t);
-    }
-  }, [activeTab, generatedImage, updateScale, mobileView]);
+    const el = viewportRef.current;
+    if (!el) return;
 
-  // --- INTERACTION STATE ---
+    const resizeObserver = new ResizeObserver(() => {
+       updateScale();
+    });
+    resizeObserver.observe(el);
+    
+    // Initial call
+    updateScale();
+
+    return () => resizeObserver.disconnect();
+  }, [updateScale, activeTab, mobileView]); // Re-calculate when layout changes
+
+  // --- INTERACTION STATE (Refactored for performance) ---
   const [selectionId, setSelectionId] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<{ x: number, y: number } | null>(null); 
-  // Offset of the object's center relative to the mouse cursor in Canvas Coordinates
-  const [dragOffset, setDragOffset] = useState<{ x: number, y: number } | null>(null);
   const [isIsolatingProduct, setIsIsolatingProduct] = useState(false);
+
+  // Refs for Dragging to avoid re-renders and "hold" bugs
+  const dragRef = useRef<{
+      isDragging: boolean;
+      startX: number;
+      startY: number;
+      initialLayerX: number;
+      initialLayerY: number;
+      targetId: string | null;
+  }>({
+      isDragging: false,
+      startX: 0,
+      startY: 0,
+      initialLayerX: 0,
+      initialLayerY: 0,
+      targetId: null
+  });
 
   // --- EFFECTS & INIT ---
 
@@ -185,23 +220,21 @@ export default function App() {
     }
   };
 
-  // --- HELPERS ---
-
-  // Convert screen coordinates to 1920x1080 Canvas Coordinates
-  const getCanvasCoordinates = useCallback((clientX: number, clientY: number) => {
-      const canvasElement = document.getElementById('canvas-root');
-      if (!canvasElement) return { x: 0, y: 0 };
-
-      const rect = canvasElement.getBoundingClientRect();
-      
-      const relativeX = clientX - rect.left;
-      const relativeY = clientY - rect.top;
-      
-      return { 
-        x: relativeX / scaleFactor, 
-        y: relativeY / scaleFactor 
-      };
-  }, [scaleFactor]);
+  // --- HELPER UTILS ---
+  
+  const hexToRgba = (hex: string, alpha: number) => {
+    // Ensure hex is valid
+    if (!/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) return `rgba(0,0,0,${alpha})`;
+    
+    let c = hex.substring(1).split('');
+    if(c.length === 3){
+        c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+    }
+    const r = parseInt(`${c[0]}${c[1]}`, 16);
+    const g = parseInt(`${c[2]}${c[3]}`, 16);
+    const b = parseInt(`${c[4]}${c[5]}`, 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  };
 
   // --- BRAND PROFILE HANDLERS ---
 
@@ -326,7 +359,9 @@ export default function App() {
         x: CANVAS_WIDTH / 2,
         y: CANVAS_HEIGHT / 2,
         rotation: 0,
+        shadow: true,
         shadowColor: '#000000',
+        shadowOpacity: 1,
         shadowBlur: 0,
         shadowOffsetX: 4,
         shadowOffsetY: 4,
@@ -582,7 +617,9 @@ export default function App() {
       x: CANVAS_WIDTH / 2,
       y: CANVAS_HEIGHT / 2,
       rotation: 0,
+      shadow: true,
       shadowColor: '#000000',
+      shadowOpacity: 0.8,
       shadowBlur: 0,
       shadowOffsetX: 4,
       shadowOffsetY: 4,
@@ -685,8 +722,6 @@ export default function App() {
                    }
 
                    if (imgLayer.glow) {
-                       // Simulating glow via shadow for canvas export (simple version)
-                       // Real glow needs multiple passes or a separate canvas, keeping it simple here.
                        ctx.shadowColor = imgLayer.glowColor;
                        ctx.shadowBlur = 40;
                    }
@@ -710,10 +745,14 @@ export default function App() {
 
                ctx.font = `900 ${text.fontSize}px ${fontFamily}`;
                
-               ctx.shadowColor = text.shadowColor;
-               ctx.shadowBlur = text.shadowBlur;
-               ctx.shadowOffsetX = text.shadowOffsetX;
-               ctx.shadowOffsetY = text.shadowOffsetY;
+               if (text.shadow) {
+                   ctx.shadowColor = hexToRgba(text.shadowColor, text.shadowOpacity);
+                   ctx.shadowBlur = text.shadowBlur;
+                   ctx.shadowOffsetX = text.shadowOffsetX;
+                   ctx.shadowOffsetY = text.shadowOffsetY;
+               } else {
+                   ctx.shadowColor = 'transparent';
+               }
 
                if (text.strokeWidth > 0) {
                    ctx.lineWidth = text.strokeWidth * 2;
@@ -739,7 +778,42 @@ export default function App() {
     drawComposite();
   };
 
-  // --- CANVAS INTERACTION CORE ---
+  // --- CANVAS INTERACTION CORE (REFACTORED FOR RESPONSIVENESS & PERF) ---
+
+  // Global Mouse Move Listener (Attached only during drag)
+  const handleMouseMoveGlobal = useCallback((e: MouseEvent) => {
+    const drag = dragRef.current;
+    if (!drag.isDragging || !drag.targetId) return;
+
+    // Calculate raw delta from start of drag
+    const deltaX = e.clientX - drag.startX;
+    const deltaY = e.clientY - drag.startY;
+
+    // Apply scale factor to delta to ensure 1:1 movement on canvas
+    const scale = scaleFactorRef.current;
+    const adjustedDeltaX = deltaX / scale;
+    const adjustedDeltaY = deltaY / scale;
+
+    // Update state directly
+    setCanvasState(prev => ({
+        ...prev,
+        layers: prev.layers.map(l => l.id === drag.targetId ? {
+            ...l,
+            x: drag.initialLayerX + adjustedDeltaX,
+            y: drag.initialLayerY + adjustedDeltaY
+        } : l)
+    }));
+  }, []);
+
+  // Global Mouse Up Listener
+  const handleMouseUpGlobal = useCallback(() => {
+    dragRef.current.isDragging = false;
+    dragRef.current.targetId = null;
+    
+    // Clean up listeners
+    window.removeEventListener('mousemove', handleMouseMoveGlobal);
+    window.removeEventListener('mouseup', handleMouseUpGlobal);
+  }, [handleMouseMoveGlobal]);
 
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
       e.stopPropagation(); 
@@ -750,45 +824,22 @@ export default function App() {
 
       setSelectionId(id);
       setActiveTab('layers');
-      setMobileView('edit'); // Switch to edit view on mobile
+      setMobileView('edit'); 
 
-      const { x: mouseCanvasX, y: mouseCanvasY } = getCanvasCoordinates(e.clientX, e.clientY);
-      
-      setDragStart({ x: e.clientX, y: e.clientY });
-      setDragOffset({ x: mouseCanvasX - layer.x, y: mouseCanvasY - layer.y });
+      // Initialize Drag State in Ref
+      dragRef.current = {
+        isDragging: true,
+        startX: e.clientX,
+        startY: e.clientY,
+        initialLayerX: layer.x,
+        initialLayerY: layer.y,
+        targetId: id
+      };
+
+      // Attach global listeners only when needed
+      window.addEventListener('mousemove', handleMouseMoveGlobal);
+      window.addEventListener('mouseup', handleMouseUpGlobal);
   };
-
-  const handleWindowMouseMove = (e: MouseEvent) => {
-     if (!selectionId || !dragStart || !dragOffset) return;
-
-     const layer = canvasState.layers.find(l => l.id === selectionId);
-     if (!layer || layer.locked) return;
-
-     if (!isDragging) {
-        const dist = Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y);
-        if (dist > 5) setIsDragging(true);
-        else return;
-     }
-
-     const { x: mouseX, y: mouseY } = getCanvasCoordinates(e.clientX, e.clientY);
-     updateLayer(selectionId, { x: mouseX - dragOffset.x, y: mouseY - dragOffset.y });
-  };
-
-  const handleWindowMouseUp = () => {
-      setIsDragging(false);
-      setDragStart(null);
-      setDragOffset(null);
-  };
-
-  useEffect(() => {
-      window.addEventListener('mousemove', handleWindowMouseMove);
-      window.addEventListener('mouseup', handleWindowMouseUp);
-      return () => {
-          window.removeEventListener('mousemove', handleWindowMouseMove);
-          window.removeEventListener('mouseup', handleWindowMouseUp);
-      }
-  }, [selectionId, dragStart, dragOffset, isDragging, scaleFactor, canvasState.layers]);
-
 
   const handleBackgroundClick = () => {
       setSelectionId(null);
@@ -919,25 +970,38 @@ export default function App() {
 
               {/* Shadow Section */}
               <div className="pt-2 border-t border-dark-800 space-y-3">
-                  <h4 className="text-[10px] uppercase font-bold text-gray-500">Drop Shadow</h4>
-                  <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                         <span className="text-xs text-gray-400 w-12">Color</span>
-                         <input type="color" value={text.shadowColor} onChange={e => updateLayer(text.id, { shadowColor: e.target.value })} className="w-full h-6 p-0 bg-transparent border-none rounded cursor-pointer" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                         <span className="text-xs text-gray-400 w-12">Blur</span>
-                         <input type="range" min="0" max="50" value={text.shadowBlur} onChange={e => updateLayer(text.id, { shadowBlur: parseInt(e.target.value) })} className="flex-1 accent-brand-500" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                         <span className="text-xs text-gray-400 w-12">X Off</span>
-                         <input type="range" min="-50" max="50" value={text.shadowOffsetX} onChange={e => updateLayer(text.id, { shadowOffsetX: parseInt(e.target.value) })} className="flex-1 accent-brand-500" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                         <span className="text-xs text-gray-400 w-12">Y Off</span>
-                         <input type="range" min="-50" max="50" value={text.shadowOffsetY} onChange={e => updateLayer(text.id, { shadowOffsetY: parseInt(e.target.value) })} className="flex-1 accent-brand-500" />
-                      </div>
+                  <div className="flex items-center justify-between">
+                      <h4 className="text-[10px] uppercase font-bold text-gray-500">Drop Shadow</h4>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" checked={!!text.shadow} onChange={e => updateLayer(text.id, { shadow: e.target.checked })} className="sr-only peer"/>
+                          <div className="w-7 h-4 bg-dark-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-brand-600"></div>
+                      </label>
                   </div>
+                  
+                  {text.shadow && (
+                    <div className="space-y-2 animate-in fade-in duration-200">
+                        <div className="flex items-center gap-2">
+                           <span className="text-xs text-gray-400 w-12">Color</span>
+                           <input type="color" value={text.shadowColor} onChange={e => updateLayer(text.id, { shadowColor: e.target.value })} className="flex-1 h-6 p-0 bg-transparent border-none rounded cursor-pointer" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <span className="text-xs text-gray-400 w-12">Opacity</span>
+                           <input type="range" min="0" max="1" step="0.05" value={text.shadowOpacity ?? 1} onChange={e => updateLayer(text.id, { shadowOpacity: parseFloat(e.target.value) })} className="flex-1 accent-brand-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <span className="text-xs text-gray-400 w-12">Blur</span>
+                           <input type="range" min="0" max="50" value={text.shadowBlur} onChange={e => updateLayer(text.id, { shadowBlur: parseInt(e.target.value) })} className="flex-1 accent-brand-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <span className="text-xs text-gray-400 w-12">X Off</span>
+                           <input type="range" min="-50" max="50" value={text.shadowOffsetX} onChange={e => updateLayer(text.id, { shadowOffsetX: parseInt(e.target.value) })} className="flex-1 accent-brand-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <span className="text-xs text-gray-400 w-12">Y Off</span>
+                           <input type="range" min="-50" max="50" value={text.shadowOffsetY} onChange={e => updateLayer(text.id, { shadowOffsetY: parseInt(e.target.value) })} className="flex-1 accent-brand-500" />
+                        </div>
+                    </div>
+                  )}
               </div>
             </div>
           );
@@ -1097,24 +1161,36 @@ export default function App() {
                 {/* UNIFIED LAYERS */}
                 {canvasState.layers.map(layer => {
                     if (!layer.visible) return null;
+                    const isSelected = selectionId === layer.id;
                     
                     if (layer.type === 'image') {
                         const imgLayer = layer as ImageLayer;
                         return (
                             <div
                                 key={imgLayer.id}
-                                className="absolute top-0 left-0"
+                                className="absolute top-0 left-0 select-none"
                                 style={{
                                     transform: `translate(${imgLayer.x}px, ${imgLayer.y}px) rotate(${imgLayer.rotation}deg) scale(${imgLayer.scale})`,
-                                    zIndex: 1 // DOM order handles Z-Index, but we keep this clean
+                                    zIndex: 1, // Z-index handled by array order mostly
+                                    cursor: 'move'
                                 }}
                                 onMouseDown={(e) => handleMouseDown(e, imgLayer.id)}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <div className="relative" style={{ transform: 'translate(-50%, -50%)' }}>
+                                <div className="relative group" style={{ transform: 'translate(-50%, -50%)' }}>
+                                    {/* Selection Box */}
+                                    {isSelected && (
+                                        <div className="absolute -inset-2 border-2 border-brand-500 rounded-sm pointer-events-none z-50">
+                                            {/* Corner Handles (Visual Only for now) */}
+                                            <div className="absolute -top-1 -left-1 w-2 h-2 bg-white border border-brand-500"></div>
+                                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-white border border-brand-500"></div>
+                                            <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-white border border-brand-500"></div>
+                                            <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-white border border-brand-500"></div>
+                                        </div>
+                                    )}
                                     <img 
                                         src={imgLayer.url} 
-                                        className={`block max-w-none pointer-events-auto cursor-grab active:cursor-grabbing ${selectionId === imgLayer.id ? 'ring-4 ring-brand-500' : ''}`}
+                                        className="block max-w-none pointer-events-auto"
                                         style={{ 
                                             filter: imgLayer.shadow ? `drop-shadow(10px 10px 20px rgba(0,0,0,0.8))` : 'none',
                                             minWidth: '50px', minHeight: '50px'
@@ -1136,31 +1212,46 @@ export default function App() {
                     } 
                     else if (layer.type === 'text') {
                         const text = layer as TextLayer;
+                        const shadowColorWithAlpha = hexToRgba(text.shadowColor, text.shadowOpacity ?? 1);
+
                         return (
                             <div
                                 key={text.id}
-                                className="absolute top-0 left-0 flex items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing"
+                                className="absolute top-0 left-0 flex items-center justify-center select-none"
                                 style={{
                                     transform: `translate(${text.x}px, ${text.y}px) rotate(${text.rotation}deg)`,
                                     transformOrigin: '0 0',
-                                    '--tw-skew-x': `${text.skewX}deg`
+                                    '--tw-skew-x': `${text.skewX}deg`,
+                                    cursor: 'move'
                                 } as React.CSSProperties}
                                 onMouseDown={(e) => handleMouseDown(e, text.id)}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <span
-                                    className={`${text.font} text-center uppercase whitespace-nowrap origin-center leading-none select-none ${selectionId === text.id ? 'ring-4 ring-brand-500' : ''}`}
-                                    style={{
-                                        color: text.color,
-                                        fontSize: `${text.fontSize}px`,
-                                        WebkitTextStroke: `${text.strokeWidth}px ${text.strokeColor}`,
-                                        paintOrder: 'stroke fill',
-                                        transform: `skewX(var(--tw-skew-x)) translate(-50%, -50%)`,
-                                        textShadow: `${text.shadowOffsetX}px ${text.shadowOffsetY}px ${text.shadowBlur}px ${text.shadowColor}`
-                                    }}
-                                >
-                                    {text.text}
-                                </span>
+                                <div className="relative" style={{ transform: `skewX(var(--tw-skew-x)) translate(-50%, -50%)` }}>
+                                     {/* Selection Box */}
+                                     {isSelected && (
+                                        <div className="absolute -inset-4 border-2 border-brand-500 rounded-sm pointer-events-none z-50">
+                                             <div className="absolute -top-1 -left-1 w-2 h-2 bg-white border border-brand-500"></div>
+                                             <div className="absolute -top-1 -right-1 w-2 h-2 bg-white border border-brand-500"></div>
+                                             <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-white border border-brand-500"></div>
+                                             <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-white border border-brand-500"></div>
+                                        </div>
+                                     )}
+                                    <span
+                                        className={`${text.font} text-center uppercase whitespace-nowrap origin-center leading-none pointer-events-auto`}
+                                        style={{
+                                            color: text.color,
+                                            fontSize: `${text.fontSize}px`,
+                                            WebkitTextStroke: `${text.strokeWidth}px ${text.strokeColor}`,
+                                            paintOrder: 'stroke fill',
+                                            textShadow: text.shadow 
+                                              ? `${text.shadowOffsetX}px ${text.shadowOffsetY}px ${text.shadowBlur}px ${shadowColorWithAlpha}`
+                                              : 'none'
+                                        }}
+                                    >
+                                        {text.text}
+                                    </span>
+                                </div>
                             </div>
                         );
                     }
@@ -1235,12 +1326,28 @@ export default function App() {
               
               {activeTab === 'backgrounds' && (
                 <div className="space-y-6">
-                    {/* Background controls ... (Kept same as before but compacted) */}
                     <div className="bg-dark-800 p-4 rounded-xl border border-dark-700 space-y-4">
                         <h3 className="text-[10px] uppercase font-bold text-gray-500">Gradient Base</h3>
                         <div className="flex gap-2">
                             <input type="color" value={canvasState.backgroundGradient.color1} onChange={(e) => setCanvasState(prev => ({ ...prev, backgroundType: 'gradient', backgroundGradient: { ...prev.backgroundGradient, color1: e.target.value } }))} className="w-8 h-8 p-0 bg-transparent border-none rounded cursor-pointer" />
                             <input type="color" value={canvasState.backgroundGradient.color2} onChange={(e) => setCanvasState(prev => ({ ...prev, backgroundType: 'gradient', backgroundGradient: { ...prev.backgroundGradient, color2: e.target.value } }))} className="w-8 h-8 p-0 bg-transparent border-none rounded cursor-pointer" />
+                        </div>
+                        
+                        <h4 className="text-[10px] uppercase font-bold text-gray-500 pt-2 border-t border-dark-700">Presets</h4>
+                        <div className="grid grid-cols-4 gap-2">
+                            {GRADIENT_PRESETS.map((p) => (
+                                <button 
+                                    key={p.name}
+                                    onClick={() => setCanvasState(prev => ({
+                                        ...prev,
+                                        backgroundType: 'gradient',
+                                        backgroundGradient: { ...prev.backgroundGradient, color1: p.c1, color2: p.c2 }
+                                    }))}
+                                    className="w-full aspect-square rounded-full border border-dark-600 hover:border-brand-500 hover:scale-110 transition-all shadow-lg"
+                                    style={{ background: `linear-gradient(135deg, ${p.c1}, ${p.c2})` }}
+                                    title={p.name}
+                                />
+                            ))}
                         </div>
                     </div>
                     <Button variant="secondary" className="w-full" onClick={() => backgroundInputRef.current?.click()} icon={<Upload className="w-4 h-4"/>}>Upload BG Image</Button>

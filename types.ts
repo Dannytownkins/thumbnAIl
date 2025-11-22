@@ -83,7 +83,9 @@ export interface TextLayer extends BaseLayer {
   strokeWidth: number;
   
   // Shadow
+  shadow: boolean;
   shadowColor: string;
+  shadowOpacity: number;
   shadowBlur: number;
   shadowOffsetX: number;
   shadowOffsetY: number;
